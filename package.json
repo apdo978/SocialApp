@@ -5,9 +5,9 @@
   "license": "ISC",
   "author": "Abdelrhman",
   "type": "commonjs",
-  "main": "./dist/index.js",
+  "main": "./index.js",
   "scripts": {
-    "start": "nodemon ./dist/index.js"
+    "start": "node ./index.js"
   },
   "dependencies": {
     "@types/bcrypt": "^5.0.2",
