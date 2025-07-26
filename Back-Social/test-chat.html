@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Chat Test</title>
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+</head>
+<body>
+    <div id="status"></div>
+    <div id="messages"></div>
+    <input type="text" id="messageInput" placeholder="Type a message">
+    <button onclick="sendMessage()">Send</button>
+
+    <script>
+        // التوكن الخاص بالمستخدم
+        const token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY4NTA4Nzg1MjQyMjk3OTJiMzBhMzllZCIsImlhdCI6MTc1MDEwODAzNywiZXhwIjoxNzUyNzAwMDM3fQ.yx23MX_DGM4GVqk9Bb7tJ1TrSarVOEyc6tOy0IZ5aVg';
+        const chatId = '68508d37e9286adb4b4db871';
+        
+        // إنشاء اتصال Socket.IO
+        const socket = io('http://localhost:3000', {
+            auth: {
+                token: token
+            }
+        });
+
+        // الاستماع لحدث الاتصال
+        socket.on('connect', () => {
+            document.getElementById('status').innerHTML = 'Connected!';
+            // الانضمام إلى غرفة المحادثة
+            socket.emit('join chat', chatId);
+        });
+
+        // الاستماع للرسائل الجديدة
+        socket.on('new message', (data) => {
+            const messagesDiv = document.getElementById('messages');
+            messagesDiv.innerHTML += `<p><strong>${data.message.sender.username}:</strong> ${data.message.content}</p>`;
+        });
+
+        // الاستماع لحالة التسليم
+        socket.on('message delivered', (data) => {
+            console.log('Message delivered:', data);
+        });
+
+        // الاستماع لمؤشر الكتابة
+        socket.on('typing', (data) => {
+            document.getElementById('status').innerHTML = `${data.user.username} is typing...`;
+        });
+
+        socket.on('stop typing', (data) => {
+            document.getElementById('status').innerHTML = '';
+        });
+
+        // دالة إرسال الرسالة
+        function sendMessage() {
+            const content = document.getElementById('messageInput').value;
+            if (content.trim()) {
+                socket.emit('new message', {
+                    content,
+                    chat: {
+                        _id: chatId,
+                        users: [] // سيتم ملؤها من الباك إند
+                    }
+                });
+                document.getElementById('messageInput').value = '';
+            }
+        }
+
+        // إرسال مؤشر الكتابة
+        document.getElementById('messageInput').addEventListener('input', (e) => {
+            socket.emit('typing', chatId);
+            
+            clearTimeout(window.typingTimeout);
+            window.typingTimeout = setTimeout(() => {
+                socket.emit('stop typing', chatId);
+            }, 2000);
+        });
+    </script>
+</body>
+</html>

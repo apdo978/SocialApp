@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Advanced Chat Test Client</title>
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+    <style>
+        body { margin: 0; padding: 20px; font-family: Arial, sans-serif; }
+        .container { max-width: 1200px; margin: 0 auto; }
+        .header { background: #f5f5f5; padding: 10px; border-radius: 5px; margin-bottom: 20px; }
+        .connection-status { padding: 5px 10px; border-radius: 3px; }
+        .connected { background: #4CAF50; color: white; }
+        .disconnected { background: #f44336; color: white; }
+        
+        .chat-container { display: flex; gap: 20px; }
+        .chat-list { width: 300px; }
+        .chat-messages { flex: 1; }
+        
+        .chat-item { 
+            padding: 10px;
+            margin: 5px 0;
+            background: #f0f0f0;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        .chat-item:hover { background: #e0e0e0; }
+        .chat-item.active { background: #2196F3; color: white; }
+        
+        .messages-container {
+            height: 400px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            padding: 10px;
+            overflow-y: auto;
+            margin-bottom: 10px;
+        }
+        
+        .message {
+            margin: 5px 0;
+            padding: 8px;
+            border-radius: 5px;
+            max-width: 70%;
+        }
+        .message.received {
+            background: #f1f1f1;
+            margin-right: auto;
+        }
+        .message.sent {
+            background: #2196F3;
+            color: white;
+            margin-left: auto;
+        }
+        
+        .message-input {
+            display: flex;
+            gap: 10px;
+        }
+        .message-input input {
+            flex: 1;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .message-input button {
+            padding: 10px 20px;
+            background: #2196F3;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        .message-input button:hover { background: #1976D2; }
+        
+        .typing-indicator {
+            font-style: italic;
+            color: #666;
+            height: 20px;
+        }
+        
+        .debug-panel {
+            margin-top: 20px;
+            padding: 10px;
+            background: #f8f8f8;
+            border-radius: 5px;
+        }
+        .debug-panel h3 { margin-top: 0; }
+        .event-log {
+            height: 200px;
+            overflow-y: auto;
+            background: #fff;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 3px;
+            font-family: monospace;
+            font-size: 12px;
+        }
+        .controls {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+        .controls button {
+            padding: 5px 10px;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+            background: #607D8B;
+            color: white;
+        }
+        .controls button:hover { background: #455A64; }
+    </style>
+</head>
+<body>
+    <div id="status"></div>
+    <div id="messages"></div>
+    <input type="text" id="messageInput" placeholder="Type a message">
+    <button onclick="sendMessage()">Send</button>
+
+    <script>
+        // التوكن الخاص بالمستخدم
+        const token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY4NTA3NzRjZTM3MTQxZjkzNzBiNGZkMyIsImlhdCI6MTc1MDEwODI4NSwiZXhwIjoxNzUyNzAwMjg1fQ.AMx7PzMq6ifkIt8PH7MQWYeMc3ytXov2AKS9VX6L1Bs';
+        const chatId = '68508d37e9286adb4b4db871';
+        
+        // إنشاء اتصال Socket.IO
+        const socket = io('ws://localhost:3000', {
+            auth: {
+                token: token
+            }
+        });
+
+        // الاستماع لحدث الاتصال
+        socket.on('connect', () => {
+            document.getElementById('status').innerHTML = 'Connected!';
+            // الانضمام إلى غرفة المحادثة
+            socket.emit('join chat', chatId);
+        });
+
+        // الاستماع للرسائل الجديدة
+        socket.on('new message', (data) => {
+            const messagesDiv = document.getElementById('messages');
+            messagesDiv.innerHTML += `<p><strong>${data.message.sender.username}:</strong> ${data.message.content}</p>`;
+        });
+
+        // الاستماع لحالة التسليم
+        socket.on('message delivered', (data) => {
+            console.log('Message delivered:', data);
+        });
+
+        // الاستماع لمؤشر الكتابة
+        socket.on('typing', (data) => {
+            document.getElementById('status').innerHTML = `${data.user.username} is typing...`;
+        });
+
+        socket.on('stop typing', (data) => {
+            document.getElementById('status').innerHTML = '';
+        });
+
+        // دالة إرسال الرسالة
+        function sendMessage() {
+            const content = document.getElementById('messageInput').value;
+            if (content.trim()) {
+                socket.emit('new message', {
+                    content,
+                    chat: {
+                        _id: chatId,
+                        users: [] // سيتم ملؤها من الباك إند
+                    }
+                });
+                document.getElementById('messageInput').value = '';
+            }
+        }
+
+        // إرسال مؤشر الكتابة
+        document.getElementById('messageInput').addEventListener('input', (e) => {
+            socket.emit('typing', chatId);
+            
+            clearTimeout(window.typingTimeout);
+            window.typingTimeout = setTimeout(() => {
+                socket.emit('stop typing', chatId);
+            }, 2000);
+        });
+    </script>
+</body>
+</html>
