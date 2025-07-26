@@ -21,13 +21,13 @@ class SocketService {
         this.userSockets = new Map();
         this.userStatus = new Map();
         this.io = new socket_io_1.Server(server, {
-        // pingTimeout: 60000,
-        // cors: {
-        //   origin: 'http://localhost:4200',
-        //   credentials: true,
-        //   methods: ['GET', 'POST']
-        // },
-        // transports: ['websocket', 'polling']
+            pingTimeout: 60000,
+            cors: {
+                origin: 'http://localhost:4200',
+                credentials: true,
+                methods: ['GET', 'POST']
+            },
+            transports: ['websocket', 'polling']
         });
         this.setupMiddleware();
         this.setupEventHandlers();

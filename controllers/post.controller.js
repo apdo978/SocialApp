@@ -12,6 +12,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.addComment = exports.likePost = exports.deletePost = exports.updatePost = exports.getPost = exports.getPosts = exports.createPost = void 0;
 const post_model_1 = require("../models/post.model");
 const user_model_1 = require("../models/user.model");
+const socket_context_1 = require("../services/socket-context");
 // @desc    Create new post
 // @route   POST /api/posts
 // @access  Private
@@ -161,6 +162,7 @@ const likePost = (req, res, next) => __awaiter(void 0, void 0, void 0, function*
     var _a;
     try {
         console.log('request to like post', req.params.id);
+        const socketService = (0, socket_context_1.getSocketInstance)();
         const post = yield post_model_1.Post.findById(req.params.id);
         if (!post) {
             res.status(404).json({
@@ -178,6 +180,12 @@ const likePost = (req, res, next) => __awaiter(void 0, void 0, void 0, function*
         else {
             // Like
             post.likes.push(userId);
+            console.log(socketService.emitToUser(post.author.toString(), 'new Like', {
+                message: `Your Post: ${post.content} Got Alike`,
+            }));
+            socketService.emitToUser(post.author.toString(), 'new Like', {
+                message: `Your Post: ${post.content} Got Alike`,
+            });
         }
         yield post.save();
         res.status(200).json({
@@ -197,6 +205,7 @@ const addComment = (req, res, next) => __awaiter(void 0, void 0, void 0, functio
     var _a;
     try {
         const post = yield post_model_1.Post.findById(req.params.id);
+        const socketService = (0, socket_context_1.getSocketInstance)();
         if (!post) {
             res.status(404).json({
                 success: false,
@@ -218,6 +227,9 @@ const addComment = (req, res, next) => __awaiter(void 0, void 0, void 0, functio
         };
         post.comments.unshift(newComment);
         yield post.save();
+        socketService.emitToUser(post.author.toString(), 'new Comment', {
+            message: `Your Post: ${post.content} Got A Comment`,
+        });
         res.status(200).json({
             success: true,
             data: post
