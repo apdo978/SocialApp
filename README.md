@@ -1,54 +1,50 @@
-# Social App Monorepo
+# Back-Social Documentation
 
-This repository contains a full-stack social platform:
+Back-Social is the TypeScript + Express API and Socket.IO server for the social platform. It provides authentication, posts, friends, chats, and messaging APIs, plus real-time events.
 
-- Angular frontend application
-- Node.js/Express backend API
-- Socket.IO real-time layer
-- MongoDB persistence
+## Tech Stack
 
-## Repository Layout
+- Node.js + Express 5
+- TypeScript
+- MongoDB + Mongoose
+- JWT authentication
+- Socket.IO
+- Multer for uploads
+- express-validator for request validation
 
-```text
-Angular Front end/   # Frontend app (Angular)
-Back-Social/         # Backend app (Express + TypeScript + MongoDB + Socket.IO)
-uploads/             # Uploaded avatars/posts served by backend
-```
-
-## Documentation Index
-
-- Frontend docs: `Angular Front end/README.md`
-- Backend docs: `Back-Social/README.md`
-
-## Quick Start
-
-### 1) Start backend
-
-```bash
-cd Back-Social
-npm install
-npm start
-```
-
-### 2) Start frontend
-
-Open a second terminal:
-
-```bash
-cd "Angular Front end"
-npm install
-npm start
-```
-
-### 3) Open app
+## Project Structure
 
 ```text
-http://localhost:4200
+src/
+  config/         # Database connection
+  controllers/    # Route handlers and business logic
+  middlewares/    # Auth, validation, upload, error handling
+  models/         # Mongoose schemas/interfaces
+  routes/         # Route definitions
+  services/       # Socket service and context
+  validators/     # Validation chains
+uploads/
+  avatars/
+  posts/
 ```
 
-## Configuration
+## API Base Prefix
 
-### Backend env file (`Back-Social/.env`)
+All routes are mounted under:
+
+```text
+/api/${API_VERSION || 'v1'}
+```
+
+Examples with default version:
+
+- `/api/v1/auth/login`
+- `/api/v1/posts`
+- `/api/v1/health`
+
+## Environment Variables
+
+Create a `.env` file in `Back-Social`.
 
 ```env
 PORT=3000
@@ -58,82 +54,163 @@ JWT_SECRET=replace_with_strong_secret
 CLIENT_URL=http://localhost:4200
 ```
 
-### Frontend environment
+Notes:
 
-`Angular Front end/src/environments/environment.development.ts` currently points to:
+- `MONGODB_URI` falls back to `mongodb://localhost:27017/socialapp` if missing.
+- `PORT` defaults to `3000`.
+- CORS and Socket.IO origin use `CLIENT_URL` (fallback `http://localhost:4200`).
 
-```ts
-apiBaseUrl: 'http://localhost:5000/api/v1'
-```
-
-If backend runs on `3000` (default), update frontend to:
-
-```ts
-apiBaseUrl: 'http://localhost:3000/api/v1'
-```
-
-## Integration Notes
-
-- Backend CORS and socket origin are controlled by `CLIENT_URL`.
-- Frontend auth stores token in local storage and uses it for HTTP + socket auth.
-- Notification system includes real-time toasts, unread tracking, and audible notification cues.
-
-## Build and Test
-
-### Frontend
-
-```bash
-cd "Angular Front end"
-npm run build
-npm test
-```
-
-### Backend
+## Running the Backend
 
 ```bash
 cd Back-Social
+npm install
 npm start
 ```
 
-Backend currently has no dedicated test script.
+Current start script:
 
-## Core Features
-
-- JWT authentication (register/login/profile)
-- Post feed with likes/comments and media uploads
-- Friend requests and friend list management
-- Direct/group chats and messaging
-- Presence/status updates and real-time notifications
-
-## Recommended Development Workflow
-
-1. Start MongoDB first.
-2. Start backend and verify health endpoint.
-3. Start frontend.
-4. Register two users for chat/friend testing.
-5. Validate socket events and notification flow.
-
-## Health Endpoint
-
-When backend runs with default settings:
-
-```http
-GET http://localhost:3000/api/v1/health
+```json
+"start": "npx tsc && nodemon ./dist/index.js"
 ```
 
-## Common Issues
+## Health Check
 
-### API requests fail
+```http
+GET /api/v1/health
+```
 
-- Check API base URL in frontend environment.
-- Check backend running port and API version.
+Response includes status, version, and timestamp.
 
-### Socket connection fails
+## REST Endpoints
 
-- Check token exists after login.
-- Check backend `CLIENT_URL` allows frontend origin.
+### Auth routes
 
-### Notifications appear without sound
+Base: `/api/v1/auth`
 
-- Browser may block sound until user interaction.
-- Click once in app and trigger a new notification.
+- `POST /register`
+- `POST /login`
+- `GET /me` (protected)
+- `GET /search` (protected)
+- `GET /friend/:friendId` (protected)
+- `PUT /updatedetails` (protected)
+- `PUT /avatar` (protected, multipart `avatar`)
+
+### Post routes
+
+Base: `/api/v1/posts`
+
+- `GET /` (protected)
+- `POST /` (protected, multipart optional `image`)
+- `GET /mine` (protected)
+- `GET /user/:userId` (protected)
+- `GET /:id` (protected)
+- `PUT /:id` (protected, multipart optional `image`)
+- `DELETE /:id` (protected)
+- `PUT /:id/like` (protected)
+- `POST /:id/comments` (protected)
+
+### Chat routes
+
+Base: `/api/v1/chats`
+
+- `GET /` (protected)
+- `POST /` (protected direct chat access/create)
+- `POST /group` (protected)
+- `PUT /group/:chatId` (protected rename)
+- `PUT /group/:chatId/add` (protected)
+- `PUT /group/:chatId/remove` (protected)
+
+### Message routes
+
+Base: `/api/v1/messages`
+
+- `GET /:chatId` (protected)
+- `POST /` (protected send message)
+- `PUT /:chatId/read` (protected)
+
+### Friend routes
+
+Base: `/api/v1/friends`
+
+- `POST /request/:userId` (protected)
+- `PUT /accept/:requestId` (protected)
+- `PUT /reject/:requestId` (protected)
+- `GET /requests` (protected)
+- `GET /` (protected)
+- `DELETE /:friendId` (protected)
+
+## Socket.IO
+
+### Authentication
+
+Client must provide token in handshake auth payload:
+
+```ts
+auth: { token: 'jwt_token' }
+```
+
+### Server-emitted events
+
+- `new_message`
+- `message_delivered`
+- `new_friend_request`
+- `friend_request_response`
+- `user_status_changed`
+- `typing_started`
+- `typing_stopped`
+- `user_joined`
+- `user_left`
+
+### Client-to-server events
+
+- `join_chat`
+- `leave_chat`
+- `new_message`
+- `typing_status`
+- `friend_request`
+- `friend_request_response`
+- `set_status`
+
+## Uploads
+
+Static files are exposed from:
+
+```text
+/uploads
+```
+
+Mapped to local `uploads` directory containing `avatars` and `posts`.
+
+## Error Handling
+
+- Unknown routes produce 404 and flow to centralized error middleware.
+- Validation errors are handled through validator chains + `validate` middleware.
+
+## Testing
+
+No dedicated backend test script is currently defined in `package.json`.
+
+Recommended manual checks:
+
+1. Health endpoint.
+2. Register/login/token usage.
+3. Protected route access with/without token.
+4. Post create with image upload.
+5. Socket connect + chat/friend events.
+
+## Troubleshooting
+
+### Frontend cannot reach backend
+
+- Confirm backend port and frontend `apiBaseUrl` match.
+- Default mismatch can occur (`3000` backend vs `5000` frontend env).
+
+### Socket authentication error
+
+- Verify `JWT_SECRET` is set and consistent for token verification.
+- Ensure frontend sends the token in handshake auth.
+
+### Uploads return missing files
+
+- Confirm `uploads` directories exist and app has write permissions.
