@@ -1,139 +1,169 @@
-# Social App Monorepo
+# Angular Front End Documentation
 
-This repository contains a full-stack social platform:
+This app is the Angular client for the social platform. It handles authentication, feed/posts, friends, chat, profile management, and real-time notifications over Socket.IO.
 
-- Angular frontend application
-- Node.js/Express backend API
-- Socket.IO real-time layer
-- MongoDB persistence
+## Tech Stack
 
-## Repository Layout
+- Angular 21 (standalone components)
+- TypeScript
+- RxJS
+- Socket.IO client
+- TailwindCSS + SCSS
+- Vitest for unit testing
 
-```text
-Angular Front end/   # Frontend app (Angular)
-Back-Social/         # Backend app (Express + TypeScript + MongoDB + Socket.IO)
-uploads/             # Uploaded avatars/posts served by backend
-```
-
-## Documentation Index
-
-- Frontend docs: `Angular Front end/README.md`
-- Backend docs: `Back-Social/README.md`
-
-## Quick Start
-
-### 1) Start backend
-
-```bash
-cd Back-Social
-npm install
-npm start
-```
-
-### 2) Start frontend
-
-Open a second terminal:
-
-```bash
-cd "Angular Front end"
-npm install
-npm start
-```
-
-### 3) Open app
+## Project Structure
 
 ```text
-http://localhost:4200
+src/
+	app/
+		Componants/          # Feature UI screens (existing folder spelling kept intentionally)
+		Interceptors/        # HTTP interceptors (auth, loading)
+		Services/
+			api/               # REST API wrappers by domain
+			auth/              # Auth logic and guards
+			socket/            # Socket and notifications services
+			theme/             # Theme handling
+		shared/
+			models/            # Shared frontend request/response/domain types
+	environments/          # Environment-specific runtime config
 ```
 
-## Configuration
+## Routing
 
-### Backend env file (`Back-Social/.env`)
+Configured in `src/app/app.routes.ts`.
 
-```env
-PORT=3000
-API_VERSION=v1
-MONGODB_URI=mongodb://localhost:27017/socialapp
-JWT_SECRET=replace_with_strong_secret
-CLIENT_URL=http://localhost:4200
-```
+- Protected with `authGuard` under main layout:
+	- `/` Home
+	- `/friends`
+	- `/chats`
+	- `/posts`
+	- `/settings`
+	- `/users/:id`
+- Guest-only routes:
+	- `/login`
+	- `/register`
+- Fallback: `**` redirects to `/`
 
-### Frontend environment
+## Environment Configuration
 
-`Angular Front end/src/environments/environment.development.ts` currently points to:
+Configured in:
+
+- `src/environments/environment.development.ts`
+- `src/environments/environment.ts`
+
+Current API base URL:
 
 ```ts
 apiBaseUrl: 'http://localhost:5000/api/v1'
 ```
 
-If backend runs on `3000` (default), update frontend to:
+Important: the backend defaults to port `3000`. If you run backend on `3000`, update frontend `apiBaseUrl` to `http://localhost:3000/api/v1`.
 
-```ts
-apiBaseUrl: 'http://localhost:3000/api/v1'
+## Main Services
+
+### API layer
+
+- `Services/api/api.service.ts`
+	- Generic `get/post/put/delete` wrapper over Angular `HttpClient`
+	- Prepends `environment.apiBaseUrl`
+
+### Auth
+
+- `Services/auth/auth.service.ts`
+	- `login`, `register`, `me`, `searchUsers`, `getFriendProfile`, `updateDetails`, `uploadAvatar`
+	- Stores JWT in `localStorage` key: `social_app_token`
+
+### Posts
+
+- `Services/api/posts.service.ts`
+	- Feed, own posts, user posts
+	- Create/update with `FormData` (`content`, `privacy`, `tags`, optional `image`)
+	- Like and comment operations
+
+### Friends
+
+- `Services/api/friends.service.ts`
+	- Get requests and friends
+	- Send/accept/reject/remove
+	- Emits socket events for friend request responses
+
+### Chats
+
+- `Services/api/chats.service.ts`
+	- Get chats, access direct chat
+	- Get messages, send message, mark as read
+
+### Realtime Socket
+
+- `Services/socket/socket.service.ts`
+	- Connects using token from auth service
+	- Uses backend origin from `apiBaseUrl`
+	- Transport fallback: websocket + polling
+
+### Notifications
+
+- `Services/socket/notifications.service.ts`
+	- Stores notification history and transient toasts
+	- Tracks unread counts per chat
+	- Tracks pending friend requests and presence
+	- Handles `new_friend_request`, `friend_request_response`, `new_chat`, `new_message`, `post_interaction`, legacy post events, and `user_status_changed`
+	- Plays a short sound on each pushed notification
+
+## Running the Frontend
+
+```bash
+cd "Angular Front end"
+npm install
+npm start
 ```
 
-## Integration Notes
+Dev server default:
 
-- Backend CORS and socket origin are controlled by `CLIENT_URL`.
-- Frontend auth stores token in local storage and uses it for HTTP + socket auth.
-- Notification system includes real-time toasts, unread tracking, and audible notification cues.
+```text
+http://localhost:4200
+```
 
-## Build and Test
-
-### Frontend
+## Build
 
 ```bash
 cd "Angular Front end"
 npm run build
+```
+
+## Test
+
+```bash
+cd "Angular Front end"
 npm test
 ```
 
-### Backend
+## Integration Checklist
 
-```bash
-cd Back-Social
-npm start
-```
+1. Backend is running and reachable.
+2. Frontend `apiBaseUrl` matches backend host/port and API version.
+3. Backend CORS `CLIENT_URL` allows frontend origin.
+4. JWT token exists in local storage after login.
+5. Socket connection succeeds after authentication.
 
-Backend currently has no dedicated test script.
+## Troubleshooting
 
-## Core Features
+### API requests fail with CORS errors
 
-- JWT authentication (register/login/profile)
-- Post feed with likes/comments and media uploads
-- Friend requests and friend list management
-- Direct/group chats and messaging
-- Presence/status updates and real-time notifications
+- Verify backend `CLIENT_URL` environment variable.
+- Verify frontend URL (`http://localhost:4200`) is allowed.
 
-## Recommended Development Workflow
+### Login works but sockets do not connect
 
-1. Start MongoDB first.
-2. Start backend and verify health endpoint.
-3. Start frontend.
-4. Register two users for chat/friend testing.
-5. Validate socket events and notification flow.
+- Confirm token exists in local storage.
+- Confirm backend socket server is running and same origin as API host.
 
-## Health Endpoint
+### Notifications arrive but no sound
 
-When backend runs with default settings:
+- Browser may block autoplay until first user interaction.
+- Click once inside the app, then trigger a new notification.
 
-```http
-GET http://localhost:3000/api/v1/health
-```
+## Notes for Contributors
 
-## Common Issues
-
-### API requests fail
-
-- Check API base URL in frontend environment.
-- Check backend running port and API version.
-
-### Socket connection fails
-
-- Check token exists after login.
-- Check backend `CLIENT_URL` allows frontend origin.
-
-### Notifications appear without sound
-
-- Browser may block sound until user interaction.
-- Click once in app and trigger a new notification.
+- Preserve existing folder naming/casing (`Componants`).
+- Keep explicit TypeScript types when adding/changing service APIs.
+- Source API/socket URLs from environment files, not hardcoded component values.
