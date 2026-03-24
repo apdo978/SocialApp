@@ -48,7 +48,8 @@ const createPost = (req, res, next) => __awaiter(void 0, void 0, void 0, functio
             });
             return;
         }
-        const media = req.file ? [`/uploads/posts/${req.file.filename}`] : [];
+      
+        const media = req.file ? [`https://socialapp-production-b586.up.railway.app/uploads/posts/${req.file.filename}`] : [];
         const payload = {
             author: req.user._id,
             content: req.body.content,
@@ -235,7 +236,7 @@ const updatePost = (req, res, next) => __awaiter(void 0, void 0, void 0, functio
             });
             return;
         }
-        const media = req.file ? [`/uploads/posts/${req.file.filename}`] : post.media;
+        const media = req.file ? [`https://socialapp-production-b586.up.railway.app/uploads/posts/${req.file.filename}`] : [];
         const updatePayload = {
             content: req.body.content,
             privacy: req.body.privacy,
